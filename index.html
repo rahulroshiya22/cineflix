@@ -183,36 +183,15 @@
         </div>
     </div>
 
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script type="module">
-        // --- FIREBASE SDK IMPORTS ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, addDoc, setDoc, deleteDoc, getDocs, writeBatch, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // --- SUPABASE CONFIG ---
+        const SUPABASE_URL = 'https://pmfoikipempgamtwhrgn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtZm9pa2lwZW1wZ2FtdHdocmduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNjA3OTUsImV4cCI6MjA3MjczNjc5NX0.u2fKOjT5NLeT_JuED5jE6kNF0Kdnids5CbRDZXNNQn4';
 
-        // --- FIREBASE CONFIG (Provided by environment) ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config)
-            : { 
-                apiKey: "AIzaSyB37oxUoIHf_CWS4dEyEhHyZP7ZxhrutYU",
-                authDomain: "afkbnafnj.firebaseapp.com",
-                projectId: "afkbnafnj",
-                storageBucket: "afkbnafnj.appspot.com",
-                messagingSenderId: "1066781405744",
-                appId: "1:1066781405744:web:76623a5d87aced95ccb3f5",
-                measurementId: "G-G3PL9PCZ0G"
-            };
-
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cineverse-app';
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        setLogLevel('debug');
-
-        // --- DB COLLECTION REFERENCES ---
-        const moviesCol = collection(db, `artifacts/${appId}/public/data/movies`);
-        const categoriesCol = collection(db, `artifacts/${appId}/public/data/categories`);
-        const bannersCol = collection(db, `artifacts/${appId}/public/data/banners`);
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         document.addEventListener('DOMContentLoaded', async function () {
             // --- STATE MANAGEMENT ---
@@ -242,50 +221,38 @@
             
             async function initializeApp() {
                 loadLocalData();
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    
-                    await seedDatabaseIfEmpty(); // New function to add default data
-                    
-                    listenToDataChanges();
-                    setupEventListeners();
-                    updateUIVisibility();
-                    renderView(state.currentView);
-                } catch (error) {
-                    console.error("Firebase Initialization Failed:", error);
-                    alert("Could not connect to the database. Please check your connection or Firebase security rules.");
-                }
+                await seedDatabaseIfEmpty();
+                listenToDataChanges();
+                setupEventListeners();
+                updateUIVisibility();
             }
             
-            // --- NEW: FUNCTION TO SEED DATABASE WITH INITIAL DATA ---
             async function seedDatabaseIfEmpty() {
-                const categoriesSnapshot = await getDocs(categoriesCol);
-                if (categoriesSnapshot.empty) {
+                const { data, error } = await supabase.from('categories').select('id', { count: 'exact', head: true });
+                if (error) {
+                    console.error("Error checking database:", error);
+                    alert("Could not connect to the database. Please ensure you have created the 'movies', 'categories', and 'banners' tables in your Supabase project.");
+                    return;
+                }
+                
+                if (data && data.length === 0) {
                     console.log("Database is empty. Seeding with default data...");
-                    const defaultData = {
+                     const defaultData = {
                          movies: [
                             { title: 'Blade Runner 2049', posterUrl: 'https://placehold.co/500x750/000000/FFFFFF/png?text=Blade+Runner+2049', description: 'A young blade runner\'s discovery of a long-buried secret leads him to track down former blade runner Rick Deckard, who\'s been missing for thirty years.', category: 'Sci-Fi', year: 2017, downloadUrl: '#' },
                             { title: 'Inception', posterUrl: 'https://placehold.co/500x750/111827/FFFFFF/png?text=Inception', description: 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.', category: 'Sci-Fi', year: 2010, downloadUrl: '#' },
                             { title: 'The Dark Knight', posterUrl: 'https://placehold.co/500x750/1f2937/FFFFFF/png?text=The+Dark+Knight', description: 'When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.', category: 'Action', year: 2008, downloadUrl: '#' },
-                            { title: 'Parasite', posterUrl: 'https://placehold.co/500x750/374151/FFFFFF/png?text=Parasite', description: 'Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan.', category: 'Thriller', year: 2019, downloadUrl: '#' },
-                            { title: 'Spirited Away', posterUrl: 'https://placehold.co/500x750/4b5563/FFFFFF/png?text=Spirited+Away', description: 'During her family\'s move to the suburbs, a sullen 10-year-old girl wanders into a world ruled by gods, witches, and spirits, and where humans are changed into beasts.', category: 'Animation', year: 2001, downloadUrl: '#' },
-                            { title: 'Mad Max: Fury Road', posterUrl: 'https://placehold.co/500x750/6b7280/FFFFFF/png?text=Mad+Max', description: 'In a post-apocalyptic wasteland, a woman rebels against a tyrannical ruler in search for her homeland with the help of a group of female prisoners, a psychotic worshiper, and a drifter named Max.', category: 'Action', year: 2015, downloadUrl: '#' },
                         ],
-                        categories: ['Sci-Fi', 'Action', 'Thriller', 'Animation'],
+                        categories: [{name: 'Sci-Fi'}, {name: 'Action'}, {name: 'Thriller'}, {name: 'Animation'}],
                         banners: [
                             { imageUrl: 'https://placehold.co/1200x300/1e293b/4f46e5?text=Limited+Time+Offer!', targetUrl: '#' }
                         ]
                     };
                     
-                    const batch = writeBatch(db);
-                    defaultData.categories.forEach(name => batch.set(doc(categoriesCol), { name }));
-                    defaultData.movies.forEach(movie => batch.set(doc(moviesCol), movie));
-                    defaultData.banners.forEach(banner => batch.set(doc(bannersCol), banner));
-                    await batch.commit();
+                    await supabase.from('categories').insert(defaultData.categories);
+                    await supabase.from('movies').insert(defaultData.movies);
+                    await supabase.from('banners').insert(defaultData.banners);
+
                     console.log("Default data has been added to the database.");
                 }
             }
@@ -293,20 +260,33 @@
 
             // --- REAL-TIME DATA LISTENERS ---
             function listenToDataChanges() {
-                onSnapshot(moviesCol, (snapshot) => {
-                    state.movies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    renderView(state.currentView, $('#searchInput').value);
-                }, (error) => console.error("Movies snapshot error:", error));
+                const handleUpdate = (payload) => {
+                    console.log('Change received!', payload);
+                    fetchAllData();
+                };
+                
+                supabase.channel('public_changes')
+                    .on('postgres_changes', { event: '*', schema: 'public' }, handleUpdate)
+                    .subscribe();
+                
+                fetchAllData(); // Initial fetch
+            }
 
-                onSnapshot(categoriesCol, (snapshot) => {
-                    state.categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.name.localeCompare(b.name));
-                    renderView(state.currentView, $('#searchInput').value);
-                }, (error) => console.error("Categories snapshot error:", error));
+            async function fetchAllData() {
+                const { data: movies, error: moviesError } = await supabase.from('movies').select('*');
+                const { data: categories, error: categoriesError } = await supabase.from('categories').select('*').order('name');
+                const { data: banners, error: bannersError } = await supabase.from('banners').select('*');
+                
+                if (moviesError || categoriesError || bannersError) {
+                    console.error("Error fetching data", { moviesError, categoriesError, bannersError });
+                    return;
+                }
 
-                onSnapshot(bannersCol, (snapshot) => {
-                    state.banners = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    renderView(state.currentView, $('#searchInput').value);
-                }, (error) => console.error("Banners snapshot error:", error));
+                state.movies = movies || [];
+                state.categories = categories || [];
+                state.banners = banners || [];
+
+                renderView(state.currentView, $('#searchInput').value);
             }
 
             function updateUIVisibility() {
@@ -419,7 +399,7 @@
                     </div>`;
             }
              function renderDetailView(movieId) {
-                const movie = state.movies.find(m => m.id === movieId);
+                const movie = state.movies.find(m => m.id == movieId);
                 if (!movie) return;
                 const previousView = state.currentView;
                 state.currentView = 'detail';
@@ -668,7 +648,7 @@
                 if (actionButton) {
                     e.stopPropagation();
                     const action = actionButton.dataset.action;
-                    const id = actionButton.dataset.id;
+                    const id = parseInt(actionButton.dataset.id);
                     const name = actionButton.dataset.name || actionButton.dataset.category;
 
                     switch (action) {
@@ -680,7 +660,7 @@
                             break;
                         case 'delete':
                             showConfirm('Delete Movie', 'Are you sure?', () => {
-                                deleteDoc(doc(moviesCol, id));
+                                supabase.from('movies').delete().eq('id', id).then(({error}) => { if(error) console.error(error); });
                             });
                             break;
                         case 'edit-cat':
@@ -694,7 +674,7 @@
                                 return;
                             }
                             showConfirm('Delete Category', `Delete "${name}"?`, () => {
-                                deleteDoc(doc(categoriesCol, id));
+                                supabase.from('categories').delete().eq('id', id).then(({error}) => { if(error) console.error(error); });
                             });
                             break;
                         case 'view-more':
@@ -712,7 +692,7 @@
                             break;
                         case 'delete-banner':
                              showConfirm('Delete Banner', 'Are you sure?', () => {
-                                 deleteDoc(doc(bannersCol, id));
+                                 supabase.from('banners').delete().eq('id', id).then(({error}) => { if(error) console.error(error); });
                              });
                             break;
                     }
@@ -734,17 +714,13 @@
                     category: $('#category').value,
                     year: parseInt($('#year').value)
                 };
-                try {
-                    if (id) {
-                        await setDoc(doc(moviesCol, id), movieData);
-                    } else {
-                        await addDoc(moviesCol, movieData);
-                    }
-                    closeModal($('#movieModal'));
-                } catch (error) {
-                    console.error("Error saving movie:", error);
-                    alert("Failed to save movie. Check console for details.");
+                
+                if (id) {
+                    await supabase.from('movies').update(movieData).eq('id', id);
+                } else {
+                    await supabase.from('movies').insert(movieData);
                 }
+                closeModal($('#movieModal'));
             }
             
             async function handleCategoryFormSubmit(e) {
@@ -756,35 +732,20 @@
                 
                 const categoryData = { name: newName };
 
-                try {
-                    if (id) {
-                        const oldNameDoc = state.categories.find(c => c.id === id);
-                        if (!oldNameDoc) return;
-                        const oldName = oldNameDoc.name;
-
-                        await setDoc(doc(categoriesCol, id), categoryData);
-                        
-                        const moviesToUpdate = state.movies.filter(m => m.category === oldName);
-                        for (const movie of moviesToUpdate) {
-                            await setDoc(doc(moviesCol, movie.id), { category: newName }, { merge: true });
-                        }
-
-                    } else {
-                        const existing = state.categories.find(c => c.name.toLowerCase() === newName.toLowerCase());
-                        if (existing) {
-                            alert('Category name already exists.');
-                            return;
-                        }
-                        await addDoc(categoriesCol, categoryData);
+                if (id) {
+                    await supabase.from('categories').update(categoryData).eq('id', id);
+                } else {
+                    const existing = state.categories.find(c => c.name.toLowerCase() === newName.toLowerCase());
+                    if (existing) {
+                        alert('Category name already exists.');
+                        return;
                     }
-                    
-                    $('#categoryForm').reset();
-                    $('#editCategoryId').value = '';
-                    $('#categorySubmitBtn').textContent = 'Add';
-                } catch(error) {
-                     console.error("Error saving category:", error);
-                    alert("Failed to save category. Check console for details.");
+                    await supabase.from('categories').insert(categoryData);
                 }
+                
+                $('#categoryForm').reset();
+                $('#editCategoryId').value = '';
+                $('#categorySubmitBtn').textContent = 'Add';
             }
 
             async function handleBannerFormSubmit(e) {
@@ -795,21 +756,16 @@
                     targetUrl: $('#bannerTargetUrl').value
                 };
 
-                try {
-                    if (id) {
-                        await setDoc(doc(bannersCol, id), bannerData);
-                    } else {
-                        await addDoc(bannersCol, bannerData);
-                    }
-                    
-                    $('#bannerForm').reset();
-                    $('#editBannerId').value = '';
-                    $('#bannerSubmitBtn').textContent = 'Add Banner';
-                    closeModal($('#bannerModal'));
-                } catch (error) {
-                    console.error("Error saving banner:", error);
-                    alert("Failed to save banner. Check console for details.");
+                if (id) {
+                    await supabase.from('banners').update(bannerData).eq('id', id);
+                } else {
+                    await supabase.from('banners').insert(bannerData);
                 }
+                
+                $('#bannerForm').reset();
+                $('#editBannerId').value = '';
+                $('#bannerSubmitBtn').textContent = 'Add Banner';
+                closeModal($('#bannerModal'));
             }
             
             function toggleMyList(movieId) {
