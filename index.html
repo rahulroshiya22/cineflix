@@ -192,7 +192,14 @@
         // --- FIREBASE CONFIG (Provided by environment) ---
         const firebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config)
-            : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" }; // Fallback for local dev
+            : { 
+                apiKey: "AIzaSyBZcyu2YWN44mRAwgzPoBvBAcYF92AD-FY",
+                authDomain: "cineverse-7d1a4.firebaseapp.com",
+                projectId: "cineverse-7d1a4",
+                storageBucket: "cineverse-7d1a4.appspot.com",
+                messagingSenderId: "102771996409",
+                appId: "1:102771996409:web:8369e205b8ee8256119428"
+            };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'cineverse-app';
 
@@ -249,7 +256,7 @@
                     renderView(state.currentView);
                 } catch (error) {
                     console.error("Firebase Authentication Failed:", error);
-                    alert("Could not connect to the database. Please check your connection or contact support.");
+                    alert("Could not connect to the database. Please check your connection or Firebase security rules.");
                 }
             }
 
