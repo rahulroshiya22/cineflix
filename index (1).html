@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineVerse - Your Movie Universe</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; -ms-overflow-style: none; scrollbar-width: none; }
+        body::-webkit-scrollbar { display: none; }
+        .movie-card { transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; }
+        .movie-card:hover { transform: scale(1.05); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1); }
+        .category-scroll::-webkit-scrollbar { height: 8px; }
+        .category-scroll::-webkit-scrollbar-track { background: #1a202c; border-radius: 10px; }
+        .category-scroll::-webkit-scrollbar-thumb { background-color: #4a5568; border-radius: 10px; border: 2px solid #1a202c; }
+        .category-scroll::-webkit-scrollbar-thumb:hover { background-color: #718096; }
+        .modal-enter, .view-enter { animation: fadeIn 0.3s ease-out; }
+        .modal-leave, .view-leave { animation: fadeOut 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+        .header-link.active { color: #ffffff; }
+        .header-link.active::after { content: ''; display: block; width: 60%; margin: 4px auto 0; height: 2px; background-color: #4f46e5; }
+        .hero-gradient { background: linear-gradient(to top, rgba(17, 24, 39, 1) 10%, rgba(17, 24, 39, 0.7) 40%, rgba(17, 24, 39, 0) 100%); }
+        #heroContent, #heroBg { transition: all 0.7s ease-in-out; }
+        .hero-fade-out { opacity: 0; }
+        .like-btn.liked svg { fill: #ec4899; stroke: #ec4899; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <!-- Main Application Container -->
+    <div id="app-container">
+        <!-- Main Content -->
+        <main class="overflow-y-auto h-screen">
+            <!-- Header -->
+            <header class="sticky top-0 z-40 bg-gray-900/80 backdrop-blur-sm shadow-lg">
+                <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
+                    <div class="flex items-center space-x-8">
+                        <div class="flex items-center space-x-2 text-indigo-400 cursor-pointer" id="logo">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10 7 5 3 5-3"/><path d="m10 14 5 3 5-3"/><path d="M10 21v-4a2 2 0 0 1 2-2h1"/><path d="M3 7v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2Z"/></svg>
+                            <span class="text-xl font-bold text-white hidden sm:inline">CineVerse</span>
+                        </div>
+                        <nav id="header-nav" class="hidden md:flex items-center space-x-6">
+                            <a href="#" data-view="home" class="text-gray-300 hover:text-white header-link active">Home</a>
+                            <a href="#" data-view="discover" class="text-gray-300 hover:text-white header-link">Discover</a>
+                            <a href="#" data-view="my-list" class="text-gray-300 hover:text-white header-link">My List</a>
+                        </nav>
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <input type="text" id="searchInput" placeholder="Search..." class="w-full bg-gray-800 border border-gray-700 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+                        </div>
+                        <div id="admin-controls" class="hidden items-center space-x-2">
+                             <button id="manageBannersBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-full flex items-center space-x-2 text-xs"><span>Banners</span></button>
+                            <button id="manageCategoriesBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-full flex items-center space-x-2 text-xs"><span>Categories</span></button>
+                            <button id="addMovieBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-full flex items-center space-x-2 text-xs"><span>+ Movie</span></button>
+                        </div>
+                         <div class="relative">
+                            <img id="user-avatar" src="https://placehold.co/40x40/6366f1/ffffff?text=G" alt="User" class="w-10 h-10 rounded-full border-2 border-indigo-500 cursor-pointer">
+                             <div id="user-menu" class="absolute top-12 right-0 bg-gray-800 rounded-md shadow-lg w-40 p-2 hidden">
+                                <button id="adminLoginBtn" class="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-md">Admin Login</button>
+                                <button id="logoutBtn" class="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-md hidden">Logout</button>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+                 <nav id="mobile-nav" class="md:hidden flex items-center justify-around bg-gray-800/50 p-2">
+                    <a href="#" data-view="home" class="flex flex-col items-center text-indigo-400 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="text-xs">Home</span></a>
+                    <a href="#" data-view="discover" class="flex flex-col items-center text-gray-400 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15.477 8.523-6.954 6.954"/><path d="m8.523 8.523 6.954 6.954"/></svg><span class="text-xs">Discover</span></a>
+                    <a href="#" data-view="my-list" class="flex flex-col items-center text-gray-400 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1"/></svg><span class="text-xs">My List</span></a>
+                </nav>
+            </header>
+
+            <div id="main-content" class="container mx-auto"></div>
+        </main>
+    </div>
+
+    <div id="loginModal" class="hidden fixed inset-0 bg-gray-900 z-50 flex justify-center items-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm p-8 border border-gray-700 text-center relative">
+             <button id="closeLoginBtn" class="absolute top-4 right-4 text-gray-500 hover:text-white text-2xl font-bold">&times;</button>
+            <h2 class="text-3xl font-bold mb-2 text-indigo-400">Admin Login</h2>
+            <form id="loginForm">
+                <div class="space-y-4 text-left mt-6">
+                    <div><label for="username" class="block text-sm font-medium text-gray-300 mb-1">Username</label><input type="text" id="username" value="Rahul" required class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                    <div><label for="password" class="block text-sm font-medium text-gray-300 mb-1">Password</label><input type="password" id="password" value="Rahul@123" required class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                </div>
+                <p id="loginError" class="text-red-400 text-sm mt-4 h-5"></p>
+                <button type="submit" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md">Login</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="movieModal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-700">
+            <form id="movieForm">
+                <h2 class="text-2xl font-bold mb-6 text-indigo-400" id="modalTitle">Add Movie</h2>
+                <div class="space-y-4">
+                    <input type="hidden" id="movieId">
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-gray-300 mb-1">Title</label>
+                        <input type="text" id="title" required class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="posterUrl" class="block text-sm font-medium text-gray-300 mb-1">Poster URL</label>
+                        <input type="url" id="posterUrl" required class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="downloadUrl" class="block text-sm font-medium text-gray-300 mb-1">Download URL</label>
+                        <input type="url" id="downloadUrl" required class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-300 mb-1">Description</label>
+                        <textarea id="description" rows="3" required class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="category" class="block text-sm font-medium text-gray-300 mb-1">Category</label>
+                            <select id="category" required class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                        </div>
+                        <div>
+                            <label for="year" class="block text-sm font-medium text-gray-300 mb-1">Year</label>
+                            <input type="number" id="year" required placeholder="e.g. 2023" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end space-x-3">
+                    <button type="button" class="cancelBtn bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md">Cancel</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Save Movie</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="categoryModal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold mb-6 text-indigo-400">Manage Categories</h2>
+            <div id="categoryList" class="space-y-2 mb-6 max-h-60 overflow-y-auto pr-2"></div>
+            <form id="categoryForm" class="flex gap-2">
+                <input type="text" id="newCategoryName" placeholder="Add or update category" required class="flex-grow bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="hidden" id="editCategoryId">
+                <button type="submit" id="categorySubmitBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Add</button>
+            </form>
+            <div class="mt-8 flex justify-end">
+                <button type="button" class="cancelBtn bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md">Close</button>
+            </div>
+        </div>
+    </div>
+    <div id="bannerModal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold mb-6 text-indigo-400">Manage Banners</h2>
+            <div id="bannerList" class="space-y-2 mb-6 max-h-60 overflow-y-auto pr-2"></div>
+            <form id="bannerForm" class="space-y-4">
+                <input type="hidden" id="editBannerId">
+                <div>
+                    <label for="bannerImageUrl" class="block text-sm font-medium text-gray-300 mb-1">Banner Image URL</label>
+                    <input type="url" id="bannerImageUrl" placeholder="https://example.com/banner.jpg" required class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="bannerTargetUrl" class="block text-sm font-medium text-gray-300 mb-1">Target URL (link)</label>
+                    <input type="url" id="bannerTargetUrl" placeholder="https://example.com/product" required class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <button type="submit" id="bannerSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Add Banner</button>
+            </form>
+            <div class="mt-8 flex justify-end">
+                <button type="button" class="cancelBtn bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md">Close</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirmModal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm p-6 border border-gray-700">
+            <h3 id="confirmTitle" class="text-lg font-bold mb-4">Confirm Action</h3>
+            <p id="confirmMessage" class="text-gray-300 mb-6">Are you sure?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirmCancelBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md">Cancel</button>
+                <button id="confirmOkBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- STATE MANAGEMENT ---
+            let state = {
+                isAdmin: false,
+                movies: [
+                    { id: 1, title: 'Blade Runner 2049', posterUrl: 'https://placehold.co/500x750/000000/FFFFFF/png?text=Blade+Runner+2049', description: 'A young blade runner\'s discovery of a long-buried secret leads him to track down former blade runner Rick Deckard, who\'s been missing for thirty years.', category: 'Sci-Fi', year: 2017, downloadUrl: '#' },
+                    { id: 2, title: 'Inception', posterUrl: 'https://placehold.co/500x750/111827/FFFFFF/png?text=Inception', description: 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.', category: 'Sci-Fi', year: 2010, downloadUrl: '#' },
+                    { id: 3, title: 'The Dark Knight', posterUrl: 'https://placehold.co/500x750/1f2937/FFFFFF/png?text=The+Dark+Knight', description: 'When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.', category: 'Action', year: 2008, downloadUrl: '#' },
+                    { id: 4, title: 'Parasite', posterUrl: 'https://placehold.co/500x750/374151/FFFFFF/png?text=Parasite', description: 'Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan.', category: 'Thriller', year: 2019, downloadUrl: '#' },
+                    { id: 5, title: 'Spirited Away', posterUrl: 'https://placehold.co/500x750/4b5563/FFFFFF/png?text=Spirited+Away', description: 'During her family\'s move to the suburbs, a sullen 10-year-old girl wanders into a world ruled by gods, witches, and spirits, and where humans are changed into beasts.', category: 'Animation', year: 2001, downloadUrl: '#' },
+                    { id: 6, title: 'Mad Max: Fury Road', posterUrl: 'https://placehold.co/500x750/6b7280/FFFFFF/png?text=Mad+Max', description: 'In a post-apocalyptic wasteland, a woman rebels against a tyrannical ruler in search for her homeland with the help of a group of female prisoners, a psychotic worshiper, and a drifter named Max.', category: 'Action', year: 2015, downloadUrl: '#' },
+                ],
+                categories: ['Sci-Fi', 'Action', 'Thriller', 'Animation'],
+                banners: [
+                    { id: 1, imageUrl: 'https://placehold.co/1200x300/1e293b/4f46e5?text=Limited+Time+Offer!', targetUrl: '#' }
+                ],
+                myList: [2, 5],
+                currentView: 'home',
+                heroInterval: null,
+                currentHeroIndex: 0
+            };
+
+            const $ = (selector) => document.querySelector(selector);
+            
+            function initializeApp() {
+                updateUIVisibility();
+                renderView(state.currentView);
+                setupEventListeners();
+            }
+
+            function updateUIVisibility() {
+                $('#admin-controls').style.display = state.isAdmin ? 'flex' : 'none';
+                $('#logoutBtn').style.display = state.isAdmin ? 'block' : 'none';
+                $('#adminLoginBtn').style.display = state.isAdmin ? 'none' : 'block';
+                $('#user-avatar').src = state.isAdmin ? 'https://placehold.co/40x40/ef4444/ffffff?text=A' : 'https://placehold.co/40x40/6366f1/ffffff?text=G';
+                $('#user-avatar').className = `w-10 h-10 rounded-full border-2 ${state.isAdmin ? 'border-red-500' : 'border-indigo-500'} cursor-pointer`;
+                renderView(state.currentView, $('#searchInput').value);
+            }
+
+            function renderView(view, filter = '') {
+                state.currentView = view;
+                const mainContent = $('#main-content');
+                
+                document.querySelectorAll('#header-nav a, #mobile-nav a').forEach(a => {
+                    a.classList.toggle('active', a.dataset.view === view);
+                    a.classList.toggle('text-indigo-400', a.dataset.view === view);
+                    a.classList.toggle('text-gray-300', a.dataset.view !== view);
+                });
+
+                if (view === 'home') {
+                    mainContent.innerHTML = getHomeViewHTML();
+                    initHeroCarousel();
+                    renderBanners();
+                } else if (view === 'discover') {
+                    mainContent.innerHTML = getDiscoverViewHTML();
+                } else if (view === 'my-list') {
+                    mainContent.innerHTML = getMyListViewHTML();
+                } else if (view === 'search') {
+                    mainContent.innerHTML = getSearchViewHTML(filter);
+                } else if (view === 'category') {
+                    mainContent.innerHTML = getCategoryViewHTML(filter);
+                } else if (view === 'detail') {
+                    // Detail view is rendered separately
+                }
+            }
+
+            function getHomeViewHTML() {
+                const groupedMovies = state.movies.reduce((acc, movie) => {
+                    (acc[movie.category] = acc[movie.category] || []).push(movie);
+                    return acc;
+                }, {});
+
+                return `
+                    <section id="heroSection" class="relative h-[40vh] md:h-[60vh] flex items-end p-4 sm:p-10 text-white">
+                        <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" id="heroBg"></div>
+                        <div class="absolute inset-0 hero-gradient"></div>
+                        <div class="relative z-10" id="heroContent"></div>
+                    </section>
+                    <section id="promo-banner-section" class="px-4 sm:px-10 py-8"></section>
+                    <div id="movie-categories" class="p-4 sm:p-10 space-y-12">
+                        ${state.categories.map(category => {
+                            const moviesInCategory = groupedMovies[category] || [];
+                            if (moviesInCategory.length === 0) return '';
+                            return `
+                                <section>
+                                    <div class="flex justify-between items-center mb-6">
+                                        <h2 class="text-2xl md:text-3xl font-bold text-gray-300">${category}</h2>
+                                        ${moviesInCategory.length > 10 ? `<button data-action="view-more" data-category="${category}" class="text-indigo-400 hover:text-indigo-300 text-sm font-semibold">View More &rarr;</button>` : ''}
+                                    </div>
+                                    <div class="flex overflow-x-auto space-x-4 md:space-x-6 pb-4 category-scroll">
+                                        ${moviesInCategory.slice(0, 10).map(createMovieCard).join('')}
+                                    </div>
+                                </section>`;
+                        }).join('')}
+                    </div>`;
+            }
+
+            function getDiscoverViewHTML() {
+                const shuffled = [...state.movies].sort(() => 0.5 - Math.random());
+                 return `
+                    <div class="p-4 sm:p-10">
+                        <h2 class="text-3xl font-bold mb-6">Discover Movies</h2>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                            ${shuffled.map(createMovieCard).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            function getMyListViewHTML() {
+                const myListMovies = state.movies.filter(m => state.myList.includes(m.id));
+                 return `
+                    <div class="p-4 sm:p-10">
+                        <h2 class="text-3xl font-bold mb-6">My List</h2>
+                        ${myListMovies.length > 0 ? `
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                            ${myListMovies.map(createMovieCard).join('')}
+                        </div>` : `<p class="text-gray-400">Your list is empty. Add movies by clicking the heart icon.</p>`}
+                    </div>`;
+            }
+             function getSearchViewHTML(filter) {
+                const filteredMovies = state.movies.filter(m => m.title.toLowerCase().includes(filter.toLowerCase()));
+                 return `
+                    <div class="p-4 sm:p-10">
+                        <h2 class="text-3xl font-bold mb-6">Search Results for "${filter}"</h2>
+                        ${filteredMovies.length > 0 ? `
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                            ${filteredMovies.map(createMovieCard).join('')}
+                        </div>` : `<p class="text-gray-400">No movies found matching your search.</p>`}
+                    </div>`;
+            }
+            function getCategoryViewHTML(categoryName) {
+                const categoryMovies = state.movies.filter(m => m.category === categoryName);
+                 return `
+                    <div class="p-4 sm:p-10">
+                        <h2 class="text-3xl font-bold mb-6">Category: ${categoryName}</h2>
+                        ${categoryMovies.length > 0 ? `
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                            ${categoryMovies.map(createMovieCard).join('')}
+                        </div>` : `<p class="text-gray-400">No movies found in this category.</p>`}
+                    </div>`;
+            }
+             function renderDetailView(movieId) {
+                const movie = state.movies.find(m => m.id === movieId);
+                if (!movie) return;
+                const previousView = state.currentView;
+                state.currentView = 'detail';
+                 $('#main-content').innerHTML = `
+                    <div class="p-4 sm:p-10">
+                    <button id="backBtn" class="mb-8 flex items-center space-x-2 text-gray-300 hover:text-white"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button>
+                    <div class="flex flex-col md:flex-row gap-6 md:gap-10">
+                        <img src="${movie.posterUrl}" alt="${movie.title}" class="w-full md:w-80 h-auto object-cover rounded-lg shadow-2xl self-center">
+                        <div>
+                            <span class="text-sm font-semibold text-indigo-400">${movie.category} - ${movie.year}</span>
+                            <h1 class="text-3xl md:text-5xl font-extrabold my-2 md:my-4">${movie.title}</h1>
+                            <p class="text-gray-300 leading-relaxed max-w-2xl">${movie.description}</p>
+                            <a href="${movie.downloadUrl}" target="_blank" class="mt-8 inline-flex bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-full items-center space-x-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Download</span></a>
+                        </div>
+                    </div>
+                    </div>`;
+                $('#backBtn').addEventListener('click', () => renderView(previousView, $('#searchInput').value));
+            }
+
+            function createMovieCard(movie) {
+                const isLiked = state.myList.includes(movie.id);
+                return `
+                    <div class="group relative">
+                         <div class="absolute top-2 right-2 z-10">
+                             <button data-action="like" data-id="${movie.id}" class="like-btn p-2 bg-black bg-opacity-50 rounded-full text-white ${isLiked ? 'liked' : ''}">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pointer-events-none"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                             </button>
+                         </div>
+                        <div class="movie-card" data-movie-id="${movie.id}">
+                            <img src="${movie.posterUrl}" alt="${movie.title}" onerror="this.onerror=null;this.src='https://placehold.co/500x750/1f2937/FFFFFF?text=Not+Found';" class="w-full h-60 md:h-72 object-cover rounded-lg shadow-lg">
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2 md:p-4 rounded-b-lg">
+                                <h3 class="font-bold text-base md:text-lg truncate">${movie.title}</h3>
+                            </div>
+                        </div>
+                        ${state.isAdmin ? `
+                        <div class="absolute -bottom-4 right-2 flex space-x-2 opacity-0 group-hover:opacity-100 group-hover:-bottom-2 transition-all duration-300 z-10">
+                           <button data-action="edit" data-id="${movie.id}" class="p-2 bg-blue-600 rounded-full shadow-lg"><svg class="w-4 h-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                           <button data-action="delete" data-id="${movie.id}" class="p-2 bg-red-600 rounded-full shadow-lg"><svg class="w-4 h-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/></svg></button>
+                        </div>` : ''}
+                    </div>`;
+            }
+
+            function initHeroCarousel() {
+                clearInterval(state.heroInterval);
+                const heroSection = $('#heroSection');
+                if(!heroSection) return;
+                
+                const update = () => updateHeroSlide();
+                update();
+                state.heroInterval = setInterval(update, 5000);
+            }
+            
+            function updateHeroSlide() {
+                const heroMovies = state.movies.slice(0, 5);
+                if (heroMovies.length === 0 || !$('#heroBg')) return;
+                const movie = heroMovies[state.currentHeroIndex];
+                
+                $('#heroBg').classList.add('hero-fade-out');
+                $('#heroContent').classList.add('hero-fade-out');
+                
+                setTimeout(() => {
+                    if(!$('#heroBg')) return;
+                    $('#heroBg').style.backgroundImage = `url('${movie.posterUrl}')`;
+                    $('#heroContent').innerHTML = `<h1 class="text-4xl md:text-6xl font-extrabold">${movie.title}</h1><button class="mt-6 bg-white text-gray-900 font-bold py-2 px-8 rounded-full" data-movie-id="${movie.id}">Details</button>`;
+                    $('#heroBg').classList.remove('hero-fade-out');
+                    $('#heroContent').classList.remove('hero-fade-out');
+                }, 700);
+
+                state.currentHeroIndex = (state.currentHeroIndex + 1) % heroMovies.length;
+            }
+
+            function openModal(modalId, data = null) {
+                const modal = $(modalId);
+                modal.classList.remove('hidden');
+
+                if (modalId === '#movieModal') {
+                    $('#movieForm').reset();
+                    populateCategoryDropdown();
+                    if (data) {
+                        $('#modalTitle').textContent = 'Edit Movie';
+                        $('#movieId').value = data.id;
+                        $('#title').value = data.title;
+                        $('#posterUrl').value = data.posterUrl;
+                        $('#downloadUrl').value = data.downloadUrl;
+                        $('#description').value = data.description;
+                        $('#category').value = data.category;
+                        $('#year').value = data.year;
+                    } else {
+                        $('#modalTitle').textContent = 'Add New Movie';
+                        $('#movieId').value = '';
+                    }
+                } else if (modalId === '#categoryModal') {
+                    renderCategoriesInModal();
+                } else if (modalId === '#bannerModal') {
+                    renderBannersInModal();
+                }
+            }
+
+            function closeModal(modal) {
+                modal.classList.add('hidden');
+            }
+            
+            function showConfirm(title, message, onConfirm) {
+                $('#confirmTitle').textContent = title;
+                $('#confirmMessage').textContent = message;
+                $('#confirmModal').classList.remove('hidden');
+
+                const okBtn = $('#confirmOkBtn');
+                const cancelBtn = $('#confirmCancelBtn');
+
+                const newOkBtn = okBtn.cloneNode(true);
+                okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+                
+                const newCancelBtn = cancelBtn.cloneNode(true);
+                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+                newOkBtn.addEventListener('click', () => { onConfirm(); hideConfirm(); });
+                newCancelBtn.addEventListener('click', hideConfirm);
+            }
+            
+            function hideConfirm() {
+                $('#confirmModal').classList.add('hidden');
+            }
+
+            function populateCategoryDropdown() {
+                const select = $('#category');
+                select.innerHTML = state.categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+            }
+
+            function renderCategoriesInModal() {
+                $('#categoryList').innerHTML = state.categories.map(cat => `
+                    <div class="flex items-center justify-between bg-gray-700 p-2 rounded-md">
+                        <span class="category-name">${cat}</span>
+                        <div class="space-x-2">
+                            <button data-action="edit-cat" data-name="${cat}" class="text-blue-400 hover:text-blue-300">Edit</button>
+                            <button data-action="delete-cat" data-name="${cat}" class="text-red-400 hover:text-red-300">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            function renderBanners() {
+                const container = $('#promo-banner-section');
+                if (!container) return;
+
+                if (state.banners.length === 0) {
+                    container.innerHTML = '';
+                    return;
+                }
+                
+                const firstBanner = state.banners[0];
+                container.innerHTML = `
+                    <div class="group relative rounded-lg overflow-hidden">
+                        <a href="${firstBanner.targetUrl}" target="_blank">
+                            <img src="${firstBanner.imageUrl}" onerror="this.onerror=null;this.src='https://placehold.co/1200x300/1f2937/FFFFFF?text=Banner+Not+Found';" alt="Promotional Banner" class="w-full h-auto transition-transform duration-300 group-hover:scale-105">
+                        </a>
+                        ${state.isAdmin ? `
+                        <div class="absolute top-2 right-2 flex space-x-2">
+                            <button data-action="edit-banner" data-id="${firstBanner.id}" class="py-1 px-3 bg-blue-600 rounded-full shadow-lg text-white text-xs">Edit Banner</button>
+                        </div>
+                        ` : ''}
+                    </div>`;
+            }
+            
+            function renderBannersInModal() {
+                 $('#bannerList').innerHTML = state.banners.map(banner => `
+                    <div class="flex items-center justify-between bg-gray-700 p-2 rounded-md">
+                        <span class="text-sm truncate w-3/5">${banner.imageUrl}</span>
+                        <div class="space-x-2">
+                            <button data-action="edit-banner" data-id="${banner.id}" class="text-blue-400 hover:text-blue-300 text-sm">Edit</button>
+                            <button data-action="delete-banner" data-id="${banner.id}" class="text-red-400 hover:text-red-300 text-sm">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            function setupEventListeners() {
+                $('#loginForm').addEventListener('submit', handleLogin);
+                $('#adminLoginBtn').addEventListener('click', () => openModal('#loginModal'));
+                $('#closeLoginBtn').addEventListener('click', () => closeModal($('#loginModal')));
+                
+                $('#logo').addEventListener('click', () => renderView('home'));
+                
+                $('#user-avatar').addEventListener('click', () => $('#user-menu').classList.toggle('hidden'));
+                document.addEventListener('click', (e) => {
+                    if (!$('#user-avatar').contains(e.target) && !$('#user-menu').contains(e.target)) {
+                        $('#user-menu').classList.add('hidden');
+                    }
+                });
+
+                $('#logoutBtn').addEventListener('click', () => {
+                    state.isAdmin = false;
+                    updateUIVisibility();
+                });
+                
+                $('#searchInput').addEventListener('input', (e) => {
+                    const searchTerm = e.target.value;
+                    if (searchTerm.length > 0) {
+                        renderView('search', searchTerm);
+                    } else {
+                        renderView('home');
+                    }
+                });
+
+                document.body.addEventListener('click', handleBodyClick);
+
+                document.querySelectorAll('#header-nav a, #mobile-nav a').forEach(a => {
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        renderView(a.dataset.view);
+                    });
+                });
+
+                $('#addMovieBtn').addEventListener('click', () => openModal('#movieModal'));
+                $('#manageCategoriesBtn').addEventListener('click', () => openModal('#categoryModal'));
+                $('#manageBannersBtn').addEventListener('click', () => openModal('#bannerModal'));
+
+                $('#movieForm').addEventListener('submit', handleMovieFormSubmit);
+                $('#categoryForm').addEventListener('submit', handleCategoryFormSubmit);
+                $('#bannerForm').addEventListener('submit', handleBannerFormSubmit);
+
+                document.querySelectorAll('.cancelBtn').forEach(btn => {
+                    btn.addEventListener('click', () => closeModal(btn.closest('.fixed')));
+                });
+            }
+
+            function handleLogin(e) {
+                e.preventDefault();
+                if ($('#username').value === 'Rahul' && $('#password').value === 'Rahul@123') {
+                    state.isAdmin = true;
+                    updateUIVisibility();
+                    closeModal($('#loginModal'));
+                } else {
+                    $('#loginError').textContent = 'Invalid credentials.';
+                }
+            }
+
+            function handleBodyClick(e) {
+                const target = e.target;
+                const actionButton = target.closest('[data-action]');
+                const movieCard = target.closest('.movie-card');
+                const heroButton = target.closest('#heroContent button');
+
+                if (actionButton) {
+                    e.stopPropagation();
+                    const action = actionButton.dataset.action;
+                    const id = parseInt(actionButton.dataset.id);
+                    const name = actionButton.dataset.name || actionButton.dataset.category;
+
+                    switch (action) {
+                        case 'like':
+                            toggleMyList(id);
+                            break;
+                        case 'edit':
+                            openModal('#movieModal', state.movies.find(m => m.id === id));
+                            break;
+                        case 'delete':
+                            showConfirm('Delete Movie', 'Are you sure you want to delete this movie?', () => {
+                                state.movies = state.movies.filter(m => m.id !== id);
+                                renderView(state.currentView, $('#searchInput').value);
+                            });
+                            break;
+                        case 'edit-cat':
+                            $('#newCategoryName').value = name;
+                            $('#editCategoryId').value = name;
+                            $('#categorySubmitBtn').textContent = 'Update';
+                            break;
+                        case 'delete-cat':
+                            if (state.movies.some(m => m.category === name)) {
+                                alert('Cannot delete a category that contains movies. Please reassign or delete the movies first.');
+                                return;
+                            }
+                            showConfirm('Delete Category', `Are you sure you want to delete the "${name}" category?`, () => {
+                                state.categories = state.categories.filter(c => c !== name);
+                                renderCategoriesInModal();
+                                renderView('home');
+                            });
+                            break;
+                        case 'view-more':
+                            renderView('category', name);
+                            break;
+                        case 'edit-banner':
+                             openModal('#bannerModal');
+                             const bannerToEdit = state.banners.find(b => b.id === id);
+                             if(bannerToEdit) {
+                                $('#editBannerId').value = bannerToEdit.id;
+                                $('#bannerImageUrl').value = bannerToEdit.imageUrl;
+                                $('#bannerTargetUrl').value = bannerToEdit.targetUrl;
+                                $('#bannerSubmitBtn').textContent = 'Update Banner';
+                             }
+                            break;
+                        case 'delete-banner':
+                             showConfirm('Delete Banner', 'Are you sure you want to delete this banner?', () => {
+                                state.banners = state.banners.filter(b => b.id !== id);
+                                renderBannersInModal();
+                                renderView('home');
+                             });
+                            break;
+                    }
+                } else if (movieCard) {
+                    renderDetailView(parseInt(movieCard.dataset.movieId));
+                } else if (heroButton) {
+                    renderDetailView(parseInt(heroButton.dataset.movieId));
+                }
+            }
+
+            function handleMovieFormSubmit(e) {
+                e.preventDefault();
+                const id = parseInt($('#movieId').value);
+                const movieData = {
+                    title: $('#title').value, posterUrl: $('#posterUrl').value, downloadUrl: $('#downloadUrl').value,
+                    description: $('#description').value, category: $('#category').value, year: parseInt($('#year').value)
+                };
+                if (id) {
+                    const index = state.movies.findIndex(m => m.id == id);
+                    state.movies[index] = { ...state.movies[index], ...movieData };
+                } else {
+                    movieData.id = Date.now();
+                    state.movies.unshift(movieData);
+                }
+                renderView('home');
+                closeModal($('#movieModal'));
+            }
+            
+            function handleCategoryFormSubmit(e) {
+                e.preventDefault();
+                const newName = $('#newCategoryName').value.trim();
+                const oldName = $('#editCategoryId').value;
+                
+                if(!newName) return;
+
+                if (oldName) {
+                    if (state.categories.includes(newName) && newName !== oldName) {
+                        alert('Category name already exists.'); return;
+                    }
+                    state.categories = state.categories.map(c => c === oldName ? newName : c);
+                    state.movies.forEach(m => { if(m.category === oldName) m.category = newName; });
+                } else {
+                     if (state.categories.includes(newName)) {
+                        alert('Category name already exists.'); return;
+                    }
+                    state.categories.push(newName);
+                }
+                
+                $('#categoryForm').reset();
+                $('#editCategoryId').value = '';
+                $('#categorySubmitBtn').textContent = 'Add';
+                renderCategoriesInModal();
+                renderView('home');
+            }
+
+            function handleBannerFormSubmit(e) {
+                e.preventDefault();
+                const id = parseInt($('#editBannerId').value);
+                const bannerData = {
+                    imageUrl: $('#bannerImageUrl').value,
+                    targetUrl: $('#bannerTargetUrl').value
+                };
+
+                if (id) {
+                    const index = state.banners.findIndex(b => b.id === id);
+                    state.banners[index] = { ...state.banners[index], ...bannerData };
+                } else {
+                    bannerData.id = Date.now();
+                    state.banners.push(bannerData);
+                }
+                
+                $('#bannerForm').reset();
+                $('#editBannerId').value = '';
+                $('#bannerSubmitBtn').textContent = 'Add Banner';
+                renderBannersInModal();
+                renderView('home');
+                closeModal($('#bannerModal'));
+            }
+            
+            function toggleMyList(movieId) {
+                const index = state.myList.indexOf(movieId);
+                if (index > -1) {
+                    state.myList.splice(index, 1);
+                } else {
+                    state.myList.push(movieId);
+                }
+                renderView(state.currentView, $('#searchInput').value);
+            }
+            
+            // --- INITIALIZATION ---
+            initializeApp();
+        });
+    </script>
+</body>
+</html>
+
