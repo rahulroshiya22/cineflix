@@ -228,14 +228,14 @@
             }
             
             async function seedDatabaseIfEmpty() {
-                const { data, error } = await supabase.from('categories').select('id', { count: 'exact', head: true });
+                const { count, error } = await supabase.from('categories').select('*', { count: 'exact', head: true });
                 if (error) {
                     console.error("Error checking database:", error);
                     alert("Could not connect to the database. Please ensure you have created the 'movies', 'categories', and 'banners' tables in your Supabase project.");
                     return;
                 }
                 
-                if (data && data.length === 0) {
+                if (count === 0) {
                     console.log("Database is empty. Seeding with default data...");
                      const defaultData = {
                          movies: [
@@ -274,7 +274,7 @@
 
             async function fetchAllData() {
                 const { data: movies, error: moviesError } = await supabase.from('movies').select('*');
-                const { data: categories, error: categoriesError } = await supabase.from('categories').select('*').order('name');
+                const { data: categories, error: categoriesError } = await supabase.from('categories').select('*');
                 const { data: banners, error: bannersError } = await supabase.from('banners').select('*');
                 
                 if (moviesError || categoriesError || bannersError) {
@@ -283,7 +283,7 @@
                 }
 
                 state.movies = movies || [];
-                state.categories = categories || [];
+                state.categories = (categories || []).sort((a,b) => a.name.localeCompare(b.name));
                 state.banners = banners || [];
 
                 renderView(state.currentView, $('#searchInput').value);
